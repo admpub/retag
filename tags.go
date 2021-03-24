@@ -65,7 +65,7 @@ func ConvertAny(p interface{}, maker TagMaker) interface{} {
 func convert(p interface{}, maker TagMaker, any bool) interface{} {
 	strPtrVal := reflect.ValueOf(p)
 	// TODO(yar): check type (pointer to the structure)
-	res := getType(strPtrVal.Type().Elem(), maker, any)
+	res := getType(strPtrVal.Type().Elem(), maker, any, map[string]bool{})
 	newPtrVal := reflect.NewAt(res.t, unsafe.Pointer(strPtrVal.Pointer()))
 	return newPtrVal.Interface()
 }
@@ -79,6 +79,7 @@ type result struct {
 	t        reflect.Type
 	changed  bool
 	hasIface bool
+	finishedProcessing bool
 }
 
 var cache = struct {
@@ -88,7 +89,7 @@ var cache = struct {
 	m: make(map[cacheKey]result),
 }
 
-func getType(structType reflect.Type, maker TagMaker, any bool) result {
+func getType(structType reflect.Type, maker TagMaker, any bool, seen map[string]bool) result {
 	// TODO(yar): Improve synchronization for cases when one analogue
 	// is produced concurently by different goroutines in the same time
 	key := cacheKey{structType, maker}
@@ -96,7 +97,7 @@ func getType(structType reflect.Type, maker TagMaker, any bool) result {
 	res, ok := cache.m[key]
 	cache.RUnlock()
 	if !ok || (res.hasIface && !any) {
-		res = makeType(structType, maker, any)
+		res = makeType(structType, maker, any, seen)
 		cache.Lock()
 		cache.m[key] = res
 		cache.Unlock()
@@ -104,31 +105,36 @@ func getType(structType reflect.Type, maker TagMaker, any bool) result {
 	return res
 }
 
-func makeType(t reflect.Type, maker TagMaker, any bool) result {
+func makeType(t reflect.Type, maker TagMaker, any bool, seen map[string]bool) result {
 	switch t.Kind() {
 	case reflect.Struct:
-		return makeStructType(t, maker, any)
+		key:=fmt.Sprintf("%s.%s", t.PkgPath(), t.Name())
+		if seen[key] {
+			return result{t: t, changed: false}
+		}
+		seen[key] = true
+		return makeStructType(t, maker, any, seen)
 	case reflect.Ptr:
-		res := getType(t.Elem(), maker, any)
+		res := getType(t.Elem(), maker, any,seen)
 		if !res.changed {
 			return result{t: t, changed: false}
 		}
 		return result{t: reflect.PtrTo(res.t), changed: true}
 	case reflect.Array:
-		res := getType(t.Elem(), maker, any)
+		res := getType(t.Elem(), maker, any,seen)
 		if !res.changed {
 			return result{t: t, changed: false}
 		}
 		return result{t: reflect.ArrayOf(t.Len(), res.t), changed: true}
 	case reflect.Slice:
-		res := getType(t.Elem(), maker, any)
+		res := getType(t.Elem(), maker, any,seen)
 		if !res.changed {
 			return result{t: t, changed: false}
 		}
 		return result{t: reflect.SliceOf(res.t), changed: true}
 	case reflect.Map:
-		resKey := getType(t.Key(), maker, any)
-		resElem := getType(t.Elem(), maker, any)
+		resKey := getType(t.Key(), maker, any,seen)
+		resElem := getType(t.Elem(), maker, any,seen)
 		if !resKey.changed && !resElem.changed {
 			return result{t: t, changed: false}
 		}
@@ -149,7 +155,7 @@ func makeType(t reflect.Type, maker TagMaker, any bool) result {
 	}
 }
 
-func makeStructType(structType reflect.Type, maker TagMaker, any bool) result {
+func makeStructType(structType reflect.Type, maker TagMaker, any bool, seen map[string]bool) result {
 	if structType.NumField() == 0 {
 		return result{t: structType, changed: false}
 	}
@@ -161,7 +167,7 @@ func makeStructType(structType reflect.Type, maker TagMaker, any bool) result {
 		strField := structType.Field(i)
 		if isExported(strField.Name) {
 			oldType := strField.Type
-			new := getType(oldType, maker, any)
+			new := getType(oldType, maker, any,seen)
 			strField.Type = new.t
 			if oldType != new.t {
 				changed = true

@@ -342,3 +342,20 @@ func Example_snaker() {
 	//   "support_note": "Strange customer"
 	// }
 }
+
+
+type Group struct {
+	ID          string
+	Name        string
+	Memberships []Membership
+}
+
+type Membership struct {
+	MemberID string `gorm:"uniqueIndex:idx_membership"`
+	GroupID  string `gorm:"uniqueIndex:idx_membership"`
+	Group    Group
+}
+
+func TestCircularRef(t *testing.T) {
+	Convert(&Group{}, Snaker("gorm"))
+}
