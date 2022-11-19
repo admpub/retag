@@ -76,9 +76,9 @@ type cacheKey struct {
 }
 
 type result struct {
-	t        reflect.Type
-	changed  bool
-	hasIface bool
+	t                  reflect.Type
+	changed            bool
+	hasIface           bool
 	finishedProcessing bool
 }
 
@@ -108,33 +108,33 @@ func getType(structType reflect.Type, maker TagMaker, any bool, seen map[string]
 func makeType(t reflect.Type, maker TagMaker, any bool, seen map[string]bool) result {
 	switch t.Kind() {
 	case reflect.Struct:
-		key:=fmt.Sprintf("%s.%s", t.PkgPath(), t.Name())
+		key := fmt.Sprintf("%s.%s", t.PkgPath(), t.Name())
 		if seen[key] {
 			return result{t: t, changed: false}
 		}
 		seen[key] = true
 		return makeStructType(t, maker, any, seen)
 	case reflect.Ptr:
-		res := getType(t.Elem(), maker, any,seen)
+		res := getType(t.Elem(), maker, any, seen)
 		if !res.changed {
 			return result{t: t, changed: false}
 		}
 		return result{t: reflect.PtrTo(res.t), changed: true}
 	case reflect.Array:
-		res := getType(t.Elem(), maker, any,seen)
+		res := getType(t.Elem(), maker, any, seen)
 		if !res.changed {
 			return result{t: t, changed: false}
 		}
 		return result{t: reflect.ArrayOf(t.Len(), res.t), changed: true}
 	case reflect.Slice:
-		res := getType(t.Elem(), maker, any,seen)
+		res := getType(t.Elem(), maker, any, seen)
 		if !res.changed {
 			return result{t: t, changed: false}
 		}
 		return result{t: reflect.SliceOf(res.t), changed: true}
 	case reflect.Map:
-		resKey := getType(t.Key(), maker, any,seen)
-		resElem := getType(t.Elem(), maker, any,seen)
+		resKey := getType(t.Key(), maker, any, seen)
+		resElem := getType(t.Elem(), maker, any, seen)
 		if !resKey.changed && !resElem.changed {
 			return result{t: t, changed: false}
 		}
@@ -167,7 +167,7 @@ func makeStructType(structType reflect.Type, maker TagMaker, any bool, seen map[
 		strField := structType.Field(i)
 		if isExported(strField.Name) {
 			oldType := strField.Type
-			new := getType(oldType, maker, any,seen)
+			new := getType(oldType, maker, any, seen)
 			strField.Type = new.t
 			if oldType != new.t {
 				changed = true

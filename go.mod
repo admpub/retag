@@ -1,3 +1,3 @@
-module github.com/domwong/retag
+module github.com/admpub/retag
 
 go 1.14

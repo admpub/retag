@@ -17,14 +17,15 @@ import (
 // Section view may contain comma-separated list of views or '*'. '*' matches any view.
 //
 // Examples for NewView("json", "admin"):
-//   ``                  -> ``
-//   `xml:"name"`        -> `xml:"name"`
-//   `view:"-"`          -> `json:"-"`
-//   `view:"user"`       -> `json:"-"`
-//   `view:"*"`          -> ``
-//   `view:"admin"`      -> ``
-//   `view:"user,admin"` -> ``
-//   `view:"admin" json:"Name,omitempty"` -> `json:"Name,omitempty"`
+//
+//	``                  -> ``
+//	`xml:"name"`        -> `xml:"name"`
+//	`view:"-"`          -> `json:"-"`
+//	`view:"user"`       -> `json:"-"`
+//	`view:"*"`          -> ``
+//	`view:"admin"`      -> ``
+//	`view:"user,admin"` -> ``
+//	`view:"admin" json:"Name,omitempty"` -> `json:"Name,omitempty"`
 //
 // See package examples additionally.
 func NewView(tag, name string) TagMaker {

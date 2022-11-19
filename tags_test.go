@@ -343,7 +343,6 @@ func Example_snaker() {
 	// }
 }
 
-
 type Group struct {
 	ID          string
 	Name        string
