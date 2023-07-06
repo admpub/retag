@@ -3,6 +3,7 @@ package retag
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 func NewJSONTagValue(field, tagValue string) JSONTagValue {
@@ -23,7 +24,10 @@ type JSONTagValue struct {
 func (f JSONTagValue) MakeTag(t reflect.Type, fieldIndex int) reflect.StructTag {
 	field := t.Field(fieldIndex)
 	if field.Name == f.FieldName {
-		tag := fmt.Sprintf(`json:%q`, f.TagValue)
+		value := field.Tag.Get(`json`)
+		parts := strings.SplitN(value, `,`, 2)
+		parts[0] = f.TagValue
+		tag := fmt.Sprintf(`json:%q`, strings.Join(parts, `,`))
 		return reflect.StructTag(tag)
 	}
 	return field.Tag
@@ -35,7 +39,10 @@ func (f *JSONTagValues) MakeTag(t reflect.Type, fieldIndex int) reflect.StructTa
 	field := t.Field(fieldIndex)
 	for _, set := range *f {
 		if field.Name == set.FieldName {
-			tag := fmt.Sprintf(`json:%q`, set.TagValue)
+			value := field.Tag.Get(`json`)
+			parts := strings.SplitN(value, `,`, 2)
+			parts[0] = set.TagValue
+			tag := fmt.Sprintf(`json:%q`, strings.Join(parts, `,`))
 			return reflect.StructTag(tag)
 		}
 	}

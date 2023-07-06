@@ -1,13 +1,11 @@
 package retag
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
 	"testing"
 	"time"
-	"unicode"
 	"unsafe"
 )
 
@@ -288,34 +286,6 @@ func Example_viewOfData() {
 	//   "Name": "Duke Nukem",
 	//   "SupportNote": "Strange customer"
 	// }
-}
-
-type Snaker string
-
-func (s Snaker) MakeTag(t reflect.Type, fieldIndex int) reflect.StructTag {
-	key := string(s)
-	field := t.Field(fieldIndex)
-	value := field.Tag.Get(key)
-	if value == "" {
-		value = CamelToSnake(field.Name)
-	}
-	tag := fmt.Sprintf(`%s:"%s"`, key, value)
-	return reflect.StructTag(tag)
-}
-
-func CamelToSnake(src string) string {
-	// Dumb implementation
-	var b bytes.Buffer
-	for i, r := range src {
-		if unicode.IsUpper(r) {
-			if i > 0 {
-				b.WriteByte('_')
-			}
-			r = unicode.ToLower(r)
-		}
-		b.WriteRune(r)
-	}
-	return b.String()
 }
 
 func Example_snaker() {
