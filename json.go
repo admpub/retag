@@ -21,9 +21,9 @@ type JSONTagValue struct {
 	TagValue  string
 }
 
-func (f JSONTagValue) MakeTag(t reflect.Type, fieldIndex int) reflect.StructTag {
+func (f JSONTagValue) MakeTag(t reflect.Type, fieldIndex int, path string) reflect.StructTag {
 	field := t.Field(fieldIndex)
-	if field.Name == f.FieldName {
+	if path == f.FieldName {
 		value := field.Tag.Get(`json`)
 		parts := strings.SplitN(value, `,`, 2)
 		parts[0] = f.TagValue
@@ -35,10 +35,10 @@ func (f JSONTagValue) MakeTag(t reflect.Type, fieldIndex int) reflect.StructTag 
 
 type JSONTagValues []JSONTagValue
 
-func (f *JSONTagValues) MakeTag(t reflect.Type, fieldIndex int) reflect.StructTag {
+func (f *JSONTagValues) MakeTag(t reflect.Type, fieldIndex int, path string) reflect.StructTag {
 	field := t.Field(fieldIndex)
 	for _, set := range *f {
-		if field.Name == set.FieldName {
+		if path == set.FieldName {
 			value := field.Tag.Get(`json`)
 			parts := strings.SplitN(value, `,`, 2)
 			parts[0] = set.TagValue

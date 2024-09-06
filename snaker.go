@@ -8,8 +8,8 @@ import (
 
 type Snaker string
 
-func (s Snaker) MakeTag(t reflect.Type, fieldIndex int) reflect.StructTag {
-	return makeTagWithTransform(string(s), CamelToSnake, t, fieldIndex)
+func (s Snaker) MakeTag(t reflect.Type, fieldIndex int, path string) reflect.StructTag {
+	return makeTagWithTransform(string(s), CamelToSnake, t, fieldIndex, path)
 }
 
 func CamelToSnake(src string) string {

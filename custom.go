@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func makeTagWithTransform(tagName string, transform func(string) string, t reflect.Type, fieldIndex int) reflect.StructTag {
+func makeTagWithTransform(tagName string, transform func(string) string, t reflect.Type, fieldIndex int, _ string) reflect.StructTag {
 	key := tagName
 	field := t.Field(fieldIndex)
 	value := field.Tag.Get(key)
@@ -29,6 +29,6 @@ type Custom struct {
 	Transform func(string) string
 }
 
-func (c Custom) MakeTag(t reflect.Type, fieldIndex int) reflect.StructTag {
-	return makeTagWithTransform(c.TagName, c.Transform, t, fieldIndex)
+func (c Custom) MakeTag(t reflect.Type, fieldIndex int, path string) reflect.StructTag {
+	return makeTagWithTransform(c.TagName, c.Transform, t, fieldIndex, path)
 }

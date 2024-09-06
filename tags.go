@@ -17,7 +17,7 @@ type TagMaker interface {
 	// MakeTag makes tag for the field the fieldIndex in the structureType.
 	// Result should depends on constant parameters of creation of the TagMaker and parameters
 	// passed to the MakeTag. The MakeTag should not produce side effects (like a pure function).
-	MakeTag(structureType reflect.Type, fieldIndex int) reflect.StructTag
+	MakeTag(structureType reflect.Type, fieldIndex int, path string) reflect.StructTag
 }
 
 // Convert converts the given interface p, to a runtime-generated type.
@@ -76,10 +76,9 @@ type cacheKey struct {
 }
 
 type result struct {
-	t                  reflect.Type
-	changed            bool
-	hasIface           bool
-	finishedProcessing bool
+	t        reflect.Type
+	changed  bool
+	hasIface bool
 }
 
 var cache = struct {
@@ -89,7 +88,11 @@ var cache = struct {
 	m: make(map[cacheKey]result),
 }
 
-func getType(structType reflect.Type, maker TagMaker, any bool, seen map[string]bool) result {
+func getType(structType reflect.Type, maker TagMaker, any bool, seen map[string]bool, parentName ...string) result {
+	var parent string
+	if len(parentName) > 0 {
+		parent = parentName[0]
+	}
 	// TODO(yar): Improve synchronization for cases when one analogue
 	// is produced concurently by different goroutines in the same time
 	key := cacheKey{structType, maker}
@@ -97,7 +100,7 @@ func getType(structType reflect.Type, maker TagMaker, any bool, seen map[string]
 	res, ok := cache.m[key]
 	cache.RUnlock()
 	if !ok || (res.hasIface && !any) {
-		res = makeType(structType, maker, any, seen)
+		res = makeType(structType, maker, any, seen, parent)
 		cache.Lock()
 		cache.m[key] = res
 		cache.Unlock()
@@ -105,7 +108,7 @@ func getType(structType reflect.Type, maker TagMaker, any bool, seen map[string]
 	return res
 }
 
-func makeType(t reflect.Type, maker TagMaker, any bool, seen map[string]bool) result {
+func makeType(t reflect.Type, maker TagMaker, any bool, seen map[string]bool, parent string) result {
 	switch t.Kind() {
 	case reflect.Struct:
 		key := fmt.Sprintf("%s.%s", t.PkgPath(), t.Name())
@@ -113,28 +116,28 @@ func makeType(t reflect.Type, maker TagMaker, any bool, seen map[string]bool) re
 			return result{t: t, changed: false}
 		}
 		seen[key] = true
-		return makeStructType(t, maker, any, seen)
+		return makeStructType(t, maker, any, seen, parent)
 	case reflect.Ptr:
-		res := getType(t.Elem(), maker, any, seen)
+		res := getType(t.Elem(), maker, any, seen, parent)
 		if !res.changed {
 			return result{t: t, changed: false}
 		}
-		return result{t: reflect.PtrTo(res.t), changed: true}
+		return result{t: reflect.PointerTo(res.t), changed: true}
 	case reflect.Array:
-		res := getType(t.Elem(), maker, any, seen)
+		res := getType(t.Elem(), maker, any, seen, parent)
 		if !res.changed {
 			return result{t: t, changed: false}
 		}
 		return result{t: reflect.ArrayOf(t.Len(), res.t), changed: true}
 	case reflect.Slice:
-		res := getType(t.Elem(), maker, any, seen)
+		res := getType(t.Elem(), maker, any, seen, parent)
 		if !res.changed {
 			return result{t: t, changed: false}
 		}
 		return result{t: reflect.SliceOf(res.t), changed: true}
 	case reflect.Map:
-		resKey := getType(t.Key(), maker, any, seen)
-		resElem := getType(t.Elem(), maker, any, seen)
+		resKey := getType(t.Key(), maker, any, seen, parent)
+		resElem := getType(t.Elem(), maker, any, seen, parent)
 		if !resKey.changed && !resElem.changed {
 			return result{t: t, changed: false}
 		}
@@ -155,9 +158,13 @@ func makeType(t reflect.Type, maker TagMaker, any bool, seen map[string]bool) re
 	}
 }
 
-func makeStructType(structType reflect.Type, maker TagMaker, any bool, seen map[string]bool) result {
+func makeStructType(structType reflect.Type, maker TagMaker, any bool, seen map[string]bool, parent string) result {
 	if structType.NumField() == 0 {
 		return result{t: structType, changed: false}
+	}
+	var pathPrefix string
+	if len(parent) > 0 {
+		pathPrefix = parent + `.`
 	}
 	changed := false
 	hasPrivate := false
@@ -167,7 +174,8 @@ func makeStructType(structType reflect.Type, maker TagMaker, any bool, seen map[
 		strField := structType.Field(i)
 		if isExported(strField.Name) {
 			oldType := strField.Type
-			new := getType(oldType, maker, any, seen)
+			//println(`~~~~~~~~~~~~~~~~~~>`, pathPrefix+strField.Name)
+			new := getType(oldType, maker, any, seen, pathPrefix+strField.Name)
 			strField.Type = new.t
 			if oldType != new.t {
 				changed = true
@@ -176,7 +184,7 @@ func makeStructType(structType reflect.Type, maker TagMaker, any bool, seen map[
 				hasIface = true
 			}
 			oldTag := strField.Tag
-			newTag := maker.MakeTag(structType, i)
+			newTag := maker.MakeTag(structType, i, pathPrefix+strField.Name)
 			strField.Tag = newTag
 			if oldTag != newTag {
 				changed = true

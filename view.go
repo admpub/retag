@@ -37,7 +37,7 @@ type tagView struct {
 	tag  string
 }
 
-func (v tagView) MakeTag(t reflect.Type, fieldIndex int) reflect.StructTag {
+func (v tagView) MakeTag(t reflect.Type, fieldIndex int, path string) reflect.StructTag {
 	const key = "view"
 	field := t.Field(fieldIndex)
 	value := field.Tag.Get(key)
@@ -59,10 +59,7 @@ func (v tagView) isMatch(tag string) bool {
 		return true
 	}
 	list := parseStringList(tag)
-	if list.contains(v.name) {
-		return true
-	}
-	return false
+	return list.contains(v.name)
 }
 
 func parseStringList(list string) stringList {

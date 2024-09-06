@@ -13,7 +13,8 @@ import (
 
 type maker struct{}
 
-func (m maker) MakeTag(t reflect.Type, fieldIndex int) reflect.StructTag {
+func (m maker) MakeTag(t reflect.Type, fieldIndex int, path string) reflect.StructTag {
+	println(`====================>`, t.Field(fieldIndex).Name)
 	if t.Field(fieldIndex).Name[0] != 'X' {
 		return `json:"-"`
 	}

@@ -43,7 +43,7 @@ func (c *ViewMakeTagTestCase) Run(test *testing.T) {
 		Tag:  reflect.StructTag(c.Tag),
 	}
 	t := reflect.StructOf([]reflect.StructField{field})
-	result := testView.MakeTag(t, 0)
+	result := testView.MakeTag(t, 0, ``)
 	if string(result) != c.Result {
 		test.Errorf("Expect `%s` but got `%s` for tag `%s`", c.Result, result, c.Tag)
 	}
